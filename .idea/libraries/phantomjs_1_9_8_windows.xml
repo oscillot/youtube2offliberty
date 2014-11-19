@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="phantomjs-1.9.8-windows" type="javaScript">
+    <properties>
+      <option name="frameworkName" value="Node.js Core Modules" />
+      <sourceFilesUrls>
+        <item url="file://C:/tmp/phantomjs-1.9.8-windows" />
+      </sourceFilesUrls>
+    </properties>
+    <CLASSES>
+      <root url="file://C:/tmp/phantomjs-1.9.8-windows" />
+    </CLASSES>
+    <SOURCES />
+  </library>
+</component>
