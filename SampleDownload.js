@@ -36,7 +36,7 @@ function get_casper() {
     var casper = require('casper').create({
         //Make it easy to debug:
         verbose: true,
-        logLevel: "debug",
+        logLevel: "info",
         //Allow XSS and download
         pageSettings: {
             webSecurityEnabled: false
@@ -49,7 +49,7 @@ function get_casper() {
     });
 
     //Test it out, if it fails lets die right here at the start.
-    casper.start('http://dj80hd.com', function (status) {
+    casper.start('http://google.com', function (status) {
         this.echo(this.getTitle() + JSON.stringify(status));
     });
     return casper;
@@ -58,45 +58,7 @@ function get_casper() {
 
 
 
-/**
- * Adds steps to a casper to download an mp3 file that exists on Github
- *
- * @param {Casper} casper instance that has been started
- * @return {Casper}
- * @private
- */
-function add_github_download_steps(casper) {
-    //Link to a page that has a small mp3 file on github.  Load this page then
-    //"click" the "View Raw" link to download it.
-    var mp3TestDownloadUrl = 'https://github.com/dj80hd/Crippter/blob/master/pain.mp3';
 
-    casper.thenOpen(mp3TestDownloadUrl, function (status) {
-        this.echo(this.getTitle() + JSON.stringify(status));
-    });
-
-    casper.then(function () {
-        /* The link to view the Raw file looks like this:
-         -------------------------------------------------
-         <div class="blob-wrapper data type-text">
-         <div class="image">
-         <a href="/dj80hd/Crippter/blob/master/pain.mp3?raw=true">View Raw</a>
-         </div>
-         </div>
-         --------------------------------------------------
-         */
-        var raw_link =
-            this.getElementAttribute(
-                "div[class='blob-wrapper data type-text'] div.image a", 'href');
-        require('utils').dump(raw_link);
-        //For some reason, we can't just specify downloads/, we need to give a filename
-        casper.download(raw_link, 'downloads/foo.mp3');
-
-    });
-
-    casper.then(function () {
-        console.log(this.getCurrentUrl());
-    });
-}
 
 //https://www.youtube.com/watch?v=Wu3j3Qh7sTE
 //http://offliberty.com/#https://www.youtube.com/watch?v=Wu3j3Qh7sTE
@@ -124,9 +86,25 @@ function add_github_download_steps(casper) {
  ___How to tell when we are done waiting ?
 
  */
+function offliberty_wait(casper) {
+    //Wait at least 60 seconds for Wait to go invisible.
+    //casper.wait(1000);
+    casper.waitWhileVisible('#wait',
+        function() {
+            console.log("We finished waiting");
+        },
+        function () {
+            console.log("We waited toooooo loooong");
+            //FIXME - We need to bomb out here
+        },
+        60000);
+}
 function add_offliberty_steps(casper) {
+    var download_urls;
+    var mp4_url;
     var v = 'Wu3j3Qh7sTE';
     var offliberty_url = 'http://offliberty.com/#https://www.youtube.com/watch?v=' + v;
+    var i_want_video_selector = "input#video_file[value='I want video file']";
 
     //Initiate the offliberty download process
     casper.thenOpen(offliberty_url, function() {
@@ -137,52 +115,31 @@ function add_offliberty_steps(casper) {
 
     });
 
-    //Wait at least 30 seconds for Wait to go invisible.
-    casper.waitWhileVisible('#wait',
-        function() {
-            console.log("We finished waiting");
-        },
-        function () {
-            console.log("We waited toooooo loooong");
-            //FIXME - We need to bomb out here
-        },
-        30000);
+    //Get through the waiting period
+    offliberty_wait(casper);
+
+    casper.thenClick(i_want_video_selector,function() {
+            console.log("CLICKING...");
+            offliberty_wait(casper);
+        });
 
     casper.then(function() {
-        console.log("DONE WAITING! " + this.getCurrentUrl());
-        //If there exists an element with class .download and
-        //inner text "Right-click here and 'Save link as...'"
-        //and ends in an mp3 we have an audio downlink button.
-        //If we have the same situation but an mp4, we then have
-        //a video download button.  If we have both, we have both.
-        //
-        //ASSUMPTION the first a.download is the mp3 link and
-        //if it exists, the second a.download in the mp4 link
-        var download_urls = this.getElementsAttribute(
-            "a.download", 'href');
-        if (download_urls.length > 1) {
-            //FIXME - check download_urls[1] ends in .mp4
-            casper.download(download_urls[1], 'downloads/' + v + ".mp4");
-
-        } else {
-            //Find the iWant video file button and click it.
-            //<input name="submit" value="I want video file" type="submit" class="back" id="video_file">
-
-            if (casper.exists("input#video_file[value='I want video file']")) {
-                console.log("We need to click the I want video file button");
-            }
-
-        }
+        download_urls = this.getElementsAttribute('a.download', 'href');
         require('utils').dump(download_urls);
-        //console.log("# OFFLIBERTY DL: " +offliberty_download_url.length);
-
-        //Download mp3
-        //casper.download(download_urls[0], 'downloads/' + v + ".mp3");
+        if (download_urls.length > 1) {
+            casper.download(download_urls[1], 'downloads/' + v + ".mp4");
+        }else{
+            console.log(">>>>>>>>>NO MP4!!!!!!");
+            //console.log(casper.getHTML());
+        }
     });
+
+
+
+
 
 
 }
 var casper = get_casper();
-add_github_download_steps(casper);
 add_offliberty_steps(casper);
 casper.run();
