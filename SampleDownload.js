@@ -1,7 +1,8 @@
 /**
- * This file contains several experiments on the way to having
- * a library that can automatically save a youtube video as mp4
- * using offliberty.com
+ * This file is an example of how to automatically download a youtube
+ * video using casperjs
+ *
+ * Dependencies: casperjs 1.1.0-beta3, phantomjs 1.9.8
  *
  * NOTES:
  * + To run with webstorm, one must add an "External Tool" for casperjs
@@ -15,8 +16,6 @@
  * + HTTPS problems with some versions of phantomjs:
  * http://stackoverflow.com/questions/26415188/casperjs-phantomjs-doesnt-load-https-page
  *
- *
- * NEEDGIST: Update phantomjs (or other library) in Webstorm
  *
  * TODO:
  * + Webstorm wont allow relative paths to run configurations
@@ -53,15 +52,12 @@ function get_casper() {
         this.echo(this.getTitle() + JSON.stringify(status));
     });
     return casper;
-
 }
 
 
 
 
 
-//https://www.youtube.com/watch?v=Wu3j3Qh7sTE
-//http://offliberty.com/#https://www.youtube.com/watch?v=Wu3j3Qh7sTE
 /*-------------------------------------------------------------------
  * Wait image looks like
  <div id="wait">
@@ -86,9 +82,19 @@ function get_casper() {
  ___How to tell when we are done waiting ?
 
  */
+/**
+ * Function that takes a casper instance looking at
+ * an offliberty wait screen and waits for it to finish
+ *
+ * Under the hood this is what we are dealing with:
+ * <div id="wait" style="display: none;"><img src="/img/wait.gif" border="0"><br><br><div id="progress"></div></div>
+ *
+ * @param {Casper} casper
+ * @return {null}
+ * @private
+ */
 function offliberty_wait(casper) {
     //Wait at least 60 seconds for Wait to go invisible.
-    //casper.wait(1000);
     casper.waitWhileVisible('#wait',
         function() {
             console.log("We finished waiting");
@@ -99,47 +105,50 @@ function offliberty_wait(casper) {
         },
         60000);
 }
-function add_offliberty_steps(casper) {
+
+/**
+ * Add all the steps we need for casper to download a video in the current directory.
+ * @param casper - a preconfigured, already started casper
+ * @param v - video id of youtube video (e.g. Wu3j3Qh7sTE)
+ */
+function add_offliberty_steps(casper,v) {
     var download_urls;
-    var mp4_url;
-    var v = 'Wu3j3Qh7sTE';
+
+    //Special parameterized offliberty url to begin process
     var offliberty_url = 'http://offliberty.com/#https://www.youtube.com/watch?v=' + v;
+
+    //Selector to find the "I want video file" button
     var i_want_video_selector = "input#video_file[value='I want video file']";
 
     //Initiate the offliberty download process
     casper.thenOpen(offliberty_url, function() {
         console.log("Loaded " + offliberty_url);
-        //First step is to wait until we are done waiting.
-        //More specifically, that the content contains something like this:
-        //<div id="wait" style="display: none;"><img src="/img/wait.gif" border="0"><br><br><div id="progress"></div></div>
-
     });
 
     //Get through the waiting period
     offliberty_wait(casper);
 
+    //Click the I want video button if it is there.
     casper.thenClick(i_want_video_selector,function() {
             console.log("CLICKING...");
             offliberty_wait(casper);
         });
 
+    //Both audio and video links are a.download
+    //ASSUMPTION: audio is first, video is second.
     casper.then(function() {
         download_urls = this.getElementsAttribute('a.download', 'href');
         require('utils').dump(download_urls);
         if (download_urls.length > 1) {
+            //Download vid to local download dir.
             casper.download(download_urls[1], 'downloads/' + v + ".mp4");
         }else{
             console.log(">>>>>>>>>NO MP4!!!!!!");
-            //console.log(casper.getHTML());
         }
     });
-
-
-
-
-
-
 }
+
+//Main
 var casper = get_casper();
-add_offliberty_steps(casper);
+add_offliberty_steps(casper,'Wu3j3Qh7sTE');
 casper.run();
