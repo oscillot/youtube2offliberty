@@ -1,3 +1,5 @@
+.idea/
+*.iml
 *.mp3
 *.mp4
 downloads/*
